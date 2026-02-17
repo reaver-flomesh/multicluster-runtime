@@ -23,6 +23,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 )
 
+// ClusterName is a unique identifier for a cluster. The exact format of
+// the name is not specified and is up to the provider, but it must be
+// unique across all clusters known to the provider.
+type ClusterName string
+
+// String returns the string representation of the ClusterName.
+func (clusterName ClusterName) String() string {
+	return string(clusterName)
+}
+
 // Aware is an interface that can be implemented by components that
 // can engage and disengage when clusters are added or removed at runtime.
 type Aware interface {
@@ -42,7 +52,7 @@ type Aware interface {
 	//            __||____/ /_
 	//           |___         \
 	//               `--------'
-	Engage(context.Context, string, cluster.Cluster) error
+	Engage(context.Context, ClusterName, cluster.Cluster) error
 }
 
 // Provider allows to retrieve clusters by name. The provider is responsible for discovering
@@ -58,7 +68,7 @@ type Provider interface {
 	// returns an existing cluster if it has been created before.
 	// If no cluster is known to the provider under the given cluster name,
 	// ErrClusterNotFound should be returned.
-	Get(ctx context.Context, clusterName string) (cluster.Cluster, error)
+	Get(ctx context.Context, clusterName ClusterName) (cluster.Cluster, error)
 
 	// IndexField indexes the given object by the given field on all engaged
 	// clusters, current and future.
