@@ -91,7 +91,7 @@ func NewTypedUnmanaged[request mcreconcile.ClusterAware[request]](name string, m
 	}
 	return &mcController[request]{
 		TypedController: c,
-		clusters:        make(map[string]*engagedCluster),
+		clusters:        make(map[multicluster.ClusterName]*engagedCluster),
 	}, nil
 }
 
@@ -101,18 +101,18 @@ type mcController[request mcreconcile.ClusterAware[request]] struct {
 	controller.TypedController[request]
 
 	lock     sync.Mutex
-	clusters map[string]*engagedCluster
+	clusters map[multicluster.ClusterName]*engagedCluster
 	sources  []mcsource.TypedSource[client.Object, request]
 }
 
 type engagedCluster struct {
-	name    string
+	name    multicluster.ClusterName
 	cluster cluster.Cluster
 	ctx     context.Context
 	cancel  context.CancelFunc
 }
 
-func (c *mcController[request]) Engage(ctx context.Context, name string, cl cluster.Cluster) error {
+func (c *mcController[request]) Engage(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -162,7 +162,7 @@ func (c *mcController[request]) Engage(ctx context.Context, name string, cl clus
 		cancel:  cancel,
 	}
 	c.clusters[name] = ec
-	go func(ctx context.Context, key string, token *engagedCluster) {
+	go func(ctx context.Context, key multicluster.ClusterName, token *engagedCluster) {
 		<-ctx.Done()
 		c.lock.Lock()
 		defer c.lock.Unlock()

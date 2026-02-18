@@ -31,6 +31,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	mcmanager "sigs.k8s.io/multicluster-runtime/pkg/manager"
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -95,7 +96,7 @@ var _ = Describe("Provider File", Ordered, func() {
 		Expect(knownClusters).To(BeEmpty(), "Expected no clusters to be known initially")
 	})
 
-	var directoryContexts []string
+	var directoryContexts []multicluster.ClusterName
 	It("should discover clusters from files inside the directories", func(ctx context.Context) {
 		By("Creating a kubeconfig file in the test directory", func() {
 			// Wait a second, otherwise fsnotify doesn't fire reliably,
@@ -111,7 +112,7 @@ var _ = Describe("Provider File", Ordered, func() {
 		Eventually(provider.ClusterNames, "10s", "1s").Should(Equal(directoryContexts), "Expected provider to discover kubeconfig contexts from directory")
 	})
 
-	var kubeconfigContexts []string
+	var kubeconfigContexts []multicluster.ClusterName
 	It("should discovery multiple clusters from passed filename", func(ctx context.Context) {
 		By("Create kubeconfig file with multiple contexts", func() {
 			var err error
@@ -139,7 +140,7 @@ var _ = Describe("Provider File", Ordered, func() {
 		Eventually(provider.ClusterNames, "10s", "1s").Should(Equal(directoryContexts), "Expected provider to only have directory contexts remaining")
 	})
 
-	var newDirectoryContexts []string
+	var newDirectoryContexts []multicluster.ClusterName
 	It("should remove old clusters and add new ones when kubeconfig files are updated", func(ctx context.Context) {
 		By("Updating the kubeconfig file in the test directory", func() {
 			var err error
@@ -165,13 +166,13 @@ var _ = Describe("Provider File", Ordered, func() {
 // randomKubeconfig generates a kubeconfig file with n contexts and
 // writes it to the specified path.
 // The names of the contexts are returned.
-func randomKubeconfig(n int, path string) ([]string, error) {
+func randomKubeconfig(n int, path string) ([]multicluster.ClusterName, error) {
 	cfg := clientcmdapi.NewConfig()
-	contextNames := make([]string, n)
+	contextNames := make([]multicluster.ClusterName, n)
 
 	filler := randfill.New()
 	for i := 0; i < n; i++ {
-		contextNames[i] = path + "+" + randomKubeconfigContent(filler, cfg)
+		contextNames[i] = multicluster.ClusterName(path + "+" + randomKubeconfigContent(filler, cfg))
 	}
 
 	if err := clientcmd.WriteToFile(*cfg, path); err != nil {

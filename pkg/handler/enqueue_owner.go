@@ -21,13 +21,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 	mcreconcile "sigs.k8s.io/multicluster-runtime/pkg/reconcile"
 )
 
 // EnqueueRequestForOwner wraps handler.EnqueueRequestForOwner to be compatible
 // with multi-cluster.
 func EnqueueRequestForOwner(ownerType client.Object, opts ...handler.OwnerOption) EventHandlerFunc {
-	return func(clusterName string, cl cluster.Cluster) EventHandler {
+	return func(clusterName multicluster.ClusterName, cl cluster.Cluster) EventHandler {
 		return Lift(handler.EnqueueRequestForOwner(cl.GetScheme(), cl.GetRESTMapper(), ownerType, opts...))(clusterName, cl)
 	}
 }
@@ -35,7 +36,7 @@ func EnqueueRequestForOwner(ownerType client.Object, opts ...handler.OwnerOption
 // TypedEnqueueRequestForOwner wraps handler.TypedEnqueueRequestForOwner to be
 // compatible with multi-cluster.
 func TypedEnqueueRequestForOwner[object client.Object](ownerType client.Object, opts ...handler.OwnerOption) TypedEventHandlerFunc[object, mcreconcile.Request] {
-	return func(clusterName string, cl cluster.Cluster) handler.TypedEventHandler[object, mcreconcile.Request] {
+	return func(clusterName multicluster.ClusterName, cl cluster.Cluster) handler.TypedEventHandler[object, mcreconcile.Request] {
 		return TypedLift[object](handler.TypedEnqueueRequestForOwner[object](cl.GetScheme(), cl.GetRESTMapper(), ownerType, opts...))(clusterName, cl)
 	}
 }

@@ -469,7 +469,7 @@ var _ = Describe("Provider race condition", func() {
 		// Pre-populate with some clusters to make the test meaningful
 		numClusters := 20
 		for i := 0; i < numClusters; i++ {
-			clusterName := fmt.Sprintf("cluster-%d", i)
+			clusterName := mcluster.ClusterName(fmt.Sprintf("cluster-%d", i))
 			p.clusters[clusterName] = activeCluster{
 				Cluster: &mockCluster{},
 				Cancel:  func() {},
@@ -502,7 +502,7 @@ var _ = Describe("Provider race condition", func() {
 					p.ListClusters()
 				case 3:
 					// Concurrently delete a cluster. This will modify the cluster map.
-					clusterToRemove := fmt.Sprintf("cluster-%d", i/4)
+					clusterToRemove := mcluster.ClusterName(fmt.Sprintf("cluster-%d", i/4))
 					p.removeCluster(clusterToRemove)
 				}
 			}(i)

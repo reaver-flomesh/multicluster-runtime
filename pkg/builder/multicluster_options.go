@@ -75,7 +75,7 @@ func WithClusterFilter(filter ClusterFilterFunc) EngageOptions {
 // If is a helper function that wraps WithClusterFilter and has the
 // same constraints and mutually exclusive.
 func WithClustersFromProvider(ctx context.Context, provider multicluster.Provider) EngageOptions {
-	var fn ClusterFilterFunc = func(clusterName string, cluster cluster.Cluster) bool {
+	var fn ClusterFilterFunc = func(clusterName multicluster.ClusterName, cluster cluster.Cluster) bool {
 		cl, err := provider.Get(ctx, clusterName)
 		if err != nil {
 			return false

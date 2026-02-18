@@ -31,6 +31,6 @@ type wrappedAware struct {
 	providerName, sep string
 }
 
-func (w *wrappedAware) Engage(ctx context.Context, name string, cl cluster.Cluster) error {
-	return w.Aware.Engage(ctx, w.providerName+w.sep+name, cl)
+func (w *wrappedAware) Engage(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) error {
+	return w.Aware.Engage(ctx, multicluster.ClusterName(w.providerName+w.sep+name.String()), cl)
 }

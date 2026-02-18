@@ -25,15 +25,17 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
+
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 )
 
-func (p *Provider) loadClusters() (map[string]cluster.Cluster, error) {
+func (p *Provider) loadClusters() (map[multicluster.ClusterName]cluster.Cluster, error) {
 	filepaths, err := p.collectPaths()
 	if err != nil {
 		return nil, err
 	}
 
-	kubeCtxs := map[string]*rest.Config{}
+	kubeCtxs := map[multicluster.ClusterName]*rest.Config{}
 	for _, filepath := range filepaths {
 		fileKubeCtxs, err := readFile(filepath)
 		if err != nil {
@@ -41,7 +43,7 @@ func (p *Provider) loadClusters() (map[string]cluster.Cluster, error) {
 			continue
 		}
 		for name, kubeCtx := range fileKubeCtxs {
-			clusterName := filepath + p.opts.Separator + name
+			clusterName := multicluster.ClusterName(filepath + p.opts.Separator + name)
 			if _, exists := kubeCtxs[clusterName]; exists {
 				p.log.Error(nil, "duplicate context name found", "file", filepath, "context", name, "clusterName", clusterName)
 				continue
@@ -115,8 +117,8 @@ func readFile(filepath string) (map[string]*rest.Config, error) {
 	return ret, nil
 }
 
-func (p *Provider) fromContexts(kubeCtxs map[string]*rest.Config) map[string]cluster.Cluster {
-	c := make(map[string]cluster.Cluster, len(kubeCtxs))
+func (p *Provider) fromContexts(kubeCtxs map[multicluster.ClusterName]*rest.Config) map[multicluster.ClusterName]cluster.Cluster {
+	c := make(map[multicluster.ClusterName]cluster.Cluster, len(kubeCtxs))
 
 	for name, kubeCtx := range kubeCtxs {
 		cl, err := cluster.New(kubeCtx, p.opts.ClusterOptions...)

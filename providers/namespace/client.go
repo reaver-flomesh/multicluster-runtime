@@ -27,13 +27,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 )
 
 var _ client.Client = &NamespacedClient{}
 
 // NamespacedClient is a client that operates on a specific namespace.
 type NamespacedClient struct {
-	clusterName string
+	clusterName multicluster.ClusterName
 	client.Client
 }
 
@@ -43,7 +45,7 @@ func (n *NamespacedClient) Get(ctx context.Context, key client.ObjectKey, obj cl
 		return apierrors.NewInvalid(obj.GetObjectKind().GroupVersionKind().GroupKind(), obj.GetName(),
 			field.ErrorList{field.Invalid(field.NewPath("metadata", "namespace"), ns, "must be 'default'")})
 	}
-	key.Namespace = n.clusterName
+	key.Namespace = n.clusterName.String()
 	err := n.Client.Get(ctx, key, obj, opts...)
 	if err != nil {
 		return err
@@ -61,7 +63,7 @@ func (n *NamespacedClient) List(ctx context.Context, list client.ObjectList, opt
 	if copts.Namespace != metav1.NamespaceDefault {
 		return apierrors.NewNotFound(schema.GroupResource{}, copts.Namespace)
 	}
-	if err := n.Client.List(ctx, list, append(opts, client.InNamespace(n.clusterName))...); err != nil {
+	if err := n.Client.List(ctx, list, append(opts, client.InNamespace(n.clusterName.String()))...); err != nil {
 		return err
 	}
 	return meta.EachListItem(list, func(obj runtime.Object) error {
@@ -76,7 +78,7 @@ func (n *NamespacedClient) Create(ctx context.Context, obj client.Object, opts .
 		return apierrors.NewInvalid(obj.GetObjectKind().GroupVersionKind().GroupKind(), obj.GetName(),
 			field.ErrorList{field.Invalid(field.NewPath("metadata", "namespace"), ns, "must be 'default'")})
 	}
-	obj.SetNamespace(n.clusterName)
+	obj.SetNamespace(n.clusterName.String())
 	defer obj.SetNamespace(metav1.NamespaceDefault)
 	return n.Client.Create(ctx, obj, opts...)
 }
@@ -87,7 +89,7 @@ func (n *NamespacedClient) Delete(ctx context.Context, obj client.Object, opts .
 		return apierrors.NewInvalid(obj.GetObjectKind().GroupVersionKind().GroupKind(), obj.GetName(),
 			field.ErrorList{field.Invalid(field.NewPath("metadata", "namespace"), ns, "must be 'default'")})
 	}
-	obj.SetNamespace(n.clusterName)
+	obj.SetNamespace(n.clusterName.String())
 	defer obj.SetNamespace(metav1.NamespaceDefault)
 	return n.Client.Delete(ctx, obj, opts...)
 }
@@ -98,7 +100,7 @@ func (n *NamespacedClient) Update(ctx context.Context, obj client.Object, opts .
 		return apierrors.NewInvalid(obj.GetObjectKind().GroupVersionKind().GroupKind(), obj.GetName(),
 			field.ErrorList{field.Invalid(field.NewPath("metadata", "namespace"), ns, "must be 'default'")})
 	}
-	obj.SetNamespace(n.clusterName)
+	obj.SetNamespace(n.clusterName.String())
 	defer obj.SetNamespace(metav1.NamespaceDefault)
 	return n.Client.Update(ctx, obj, opts...)
 }
@@ -121,7 +123,7 @@ func (n *NamespacedClient) DeleteAllOf(ctx context.Context, obj client.Object, o
 		return apierrors.NewInvalid(obj.GetObjectKind().GroupVersionKind().GroupKind(), obj.GetName(),
 			field.ErrorList{field.Invalid(field.NewPath("metadata", "namespace"), ns, "must be 'default'")})
 	}
-	obj.SetNamespace(n.clusterName)
+	obj.SetNamespace(n.clusterName.String())
 	defer obj.SetNamespace(metav1.NamespaceDefault)
 	return n.Client.DeleteAllOf(ctx, obj, opts...)
 }
@@ -141,7 +143,7 @@ var _ client.SubResourceClient = &SubResourceNamespacedClient{}
 // SubResourceNamespacedClient is a client that operates on a specific namespace
 // and subresource.
 type SubResourceNamespacedClient struct {
-	clusterName string
+	clusterName multicluster.ClusterName
 	client      client.SubResourceClient
 }
 
@@ -151,7 +153,7 @@ func (s SubResourceNamespacedClient) Get(ctx context.Context, obj client.Object,
 		return apierrors.NewInvalid(obj.GetObjectKind().GroupVersionKind().GroupKind(), obj.GetName(),
 			field.ErrorList{field.Invalid(field.NewPath("metadata", "namespace"), ns, "must be 'default'")})
 	}
-	obj.SetNamespace(s.clusterName)
+	obj.SetNamespace(s.clusterName.String())
 	defer obj.SetNamespace(metav1.NamespaceDefault)
 	defer subResource.SetNamespace(metav1.NamespaceDefault)
 	return s.client.Get(ctx, obj, subResource, opts...)
@@ -163,7 +165,7 @@ func (s SubResourceNamespacedClient) Create(ctx context.Context, obj client.Obje
 		return apierrors.NewInvalid(obj.GetObjectKind().GroupVersionKind().GroupKind(), obj.GetName(),
 			field.ErrorList{field.Invalid(field.NewPath("metadata", "namespace"), ns, "must be 'default'")})
 	}
-	obj.SetNamespace(s.clusterName)
+	obj.SetNamespace(s.clusterName.String())
 	defer obj.SetNamespace(metav1.NamespaceDefault)
 	defer subResource.SetNamespace(metav1.NamespaceDefault)
 	return s.client.Create(ctx, obj, subResource, opts...)
@@ -175,7 +177,7 @@ func (s SubResourceNamespacedClient) Update(ctx context.Context, obj client.Obje
 		return apierrors.NewInvalid(obj.GetObjectKind().GroupVersionKind().GroupKind(), obj.GetName(),
 			field.ErrorList{field.Invalid(field.NewPath("metadata", "namespace"), ns, "must be 'default'")})
 	}
-	obj.SetNamespace(s.clusterName)
+	obj.SetNamespace(s.clusterName.String())
 	defer obj.SetNamespace(metav1.NamespaceDefault)
 	return s.client.Update(ctx, obj, opts...)
 }

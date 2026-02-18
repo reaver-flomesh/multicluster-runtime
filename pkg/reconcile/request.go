@@ -22,6 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 )
 
 // ClusterAware is a request that is aware of the cluster it belongs to.
@@ -29,8 +31,8 @@ type ClusterAware[request comparable] interface {
 	comparable
 	fmt.Stringer
 
-	Cluster() string
-	WithCluster(string) request
+	Cluster() multicluster.ClusterName
+	WithCluster(multicluster.ClusterName) request
 }
 
 // Request extends a reconcile.Request by adding the cluster name.
@@ -38,7 +40,7 @@ type Request struct {
 	reconcile.Request
 
 	// ClusterName is the name of the cluster that the request belongs to.
-	ClusterName string
+	ClusterName multicluster.ClusterName
 }
 
 // String returns the general purpose string representation.
@@ -46,16 +48,16 @@ func (r Request) String() string {
 	if r.ClusterName == "" {
 		return r.Request.String()
 	}
-	return "cluster://" + r.ClusterName + string(types.Separator) + r.Request.String()
+	return "cluster://" + r.ClusterName.String() + string(types.Separator) + r.Request.String()
 }
 
 // Cluster returns the name of the cluster that the request belongs to.
-func (r Request) Cluster() string {
+func (r Request) Cluster() multicluster.ClusterName {
 	return r.ClusterName
 }
 
 // WithCluster sets the name of the cluster that the request belongs to.
-func (r Request) WithCluster(name string) Request {
+func (r Request) WithCluster(name multicluster.ClusterName) Request {
 	r.ClusterName = name
 	return r
 }

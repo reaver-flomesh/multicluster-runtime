@@ -28,24 +28,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 	mcreconcile "sigs.k8s.io/multicluster-runtime/pkg/reconcile"
 )
 
 // EventHandlerFunc produces a handler.EventHandler for a cluster.
-type EventHandlerFunc = func(string, cluster.Cluster) EventHandler
+type EventHandlerFunc = func(multicluster.ClusterName, cluster.Cluster) EventHandler
 
 // TypedEventHandlerFunc produces a handler.TypedEventHandler for a cluster.
-type TypedEventHandlerFunc[object client.Object, request mcreconcile.ClusterAware[request]] func(string, cluster.Cluster) handler.TypedEventHandler[object, request]
+type TypedEventHandlerFunc[object client.Object, request mcreconcile.ClusterAware[request]] func(multicluster.ClusterName, cluster.Cluster) handler.TypedEventHandler[object, request]
 
 // ForCluster wraps a handler.EventHandler without multi-cluster support for one
 // concrete cluster.
-func ForCluster(h handler.EventHandler, clusterName string) EventHandler {
+func ForCluster(h handler.EventHandler, clusterName multicluster.ClusterName) EventHandler {
 	return &clusterHandler[client.Object]{h: h, clusterName: clusterName}
 }
 
 // TypedForCluster wraps a handler.TypedEventHandler without multi-cluster
 // support for one concrete cluster.
-func TypedForCluster[object client.Object](h handler.TypedEventHandler[object, reconcile.Request], clusterName string) handler.TypedEventHandler[object, mcreconcile.Request] {
+func TypedForCluster[object client.Object](h handler.TypedEventHandler[object, reconcile.Request], clusterName multicluster.ClusterName) handler.TypedEventHandler[object, mcreconcile.Request] {
 	return &clusterHandler[object]{h: h, clusterName: clusterName}
 }
 
@@ -58,7 +59,7 @@ func Lift(h handler.EventHandler) EventHandlerFunc {
 // TypedLift wraps a handler.TypedEventHandler without multi-cluster
 // support to be compatible with multi-cluster by injecting the cluster name.
 func TypedLift[object client.Object](h handler.TypedEventHandler[object, reconcile.Request]) TypedEventHandlerFunc[object, mcreconcile.Request] {
-	return func(clusterName string, cl cluster.Cluster) handler.TypedEventHandler[object, mcreconcile.Request] {
+	return func(clusterName multicluster.ClusterName, cl cluster.Cluster) handler.TypedEventHandler[object, mcreconcile.Request] {
 		return &clusterHandler[object]{h: h, clusterName: clusterName}
 	}
 }
@@ -67,7 +68,7 @@ var _ handler.TypedEventHandler[client.Object, mcreconcile.Request] = &clusterHa
 
 type clusterHandler[object client.Object] struct {
 	h           handler.TypedEventHandler[object, reconcile.Request]
-	clusterName string
+	clusterName multicluster.ClusterName
 }
 
 // Create implements EventHandler.
@@ -94,7 +95,7 @@ var _ workqueue.TypedRateLimitingInterface[reconcile.Request] = &clusterQueue{}
 
 type clusterQueue struct {
 	q  workqueue.TypedRateLimitingInterface[mcreconcile.Request]
-	cl string
+	cl multicluster.ClusterName
 }
 
 func (c clusterQueue) Add(item reconcile.Request) {

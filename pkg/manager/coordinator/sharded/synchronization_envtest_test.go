@@ -35,6 +35,7 @@ import (
 
 	mcmanager "sigs.k8s.io/multicluster-runtime/pkg/manager"
 	"sigs.k8s.io/multicluster-runtime/pkg/manager/coordinator/sharded"
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 	"sigs.k8s.io/multicluster-runtime/providers/namespace"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -111,5 +112,7 @@ var _ = Describe("Sharded coordinator envtest (namespace provider)", func() {
 
 type noopRunnable struct{}
 
-func (n *noopRunnable) Start(ctx context.Context) error                                   { <-ctx.Done(); return ctx.Err() }
-func (n *noopRunnable) Engage(ctx context.Context, name string, cl cluster.Cluster) error { return nil }
+func (n *noopRunnable) Start(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }
+func (n *noopRunnable) Engage(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) error {
+	return nil
+}

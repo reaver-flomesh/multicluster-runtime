@@ -38,7 +38,7 @@ type Coordinator interface {
 	// The coordinator may start or delay runnables for this cluster based on
 	// its policy. ctx is cancelled when the cluster is removed; implementations
 	// should stop per-cluster work promptly on cancellation.
-	Engage(ctx context.Context, name string, cl cluster.Cluster) error
+	Engage(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) error
 
 	// Runnable returns an optional background Runnable driving coordination
 	// (e.g., membership refresh, fencing). Return nil if no background work

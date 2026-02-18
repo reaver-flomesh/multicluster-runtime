@@ -225,7 +225,7 @@ func (p *Provider) run(ctx context.Context, mcAware multicluster.Aware) error {
 // Get returns the cluster with the given name.
 // If the cluster name is empty (""), it returns the first cluster
 // found.
-func (p *Provider) Get(ctx context.Context, clusterName string) (cluster.Cluster, error) {
+func (p *Provider) Get(ctx context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	if clusterName == "" {
 		clusterNames := p.Clusters.ClusterNames()
 		if len(clusterNames) == 0 {

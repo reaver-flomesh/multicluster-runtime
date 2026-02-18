@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 
 	"sigs.k8s.io/multicluster-runtime/pkg/manager/coordinator/sharded/sharder"
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 )
 
 type stubSharder struct{ own bool }
@@ -45,9 +46,9 @@ func (r *stubRegistry) Self() sharder.PeerInfo        { return r.self }
 func (r *stubRegistry) Snapshot() []sharder.PeerInfo  { return []sharder.PeerInfo{r.self} }
 func (r *stubRegistry) Run(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }
 
-type stubRunnable struct{ called chan string }
+type stubRunnable struct{ called chan multicluster.ClusterName }
 
-func (s *stubRunnable) Engage(ctx context.Context, name string, cl cluster.Cluster) error {
+func (s *stubRunnable) Engage(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) error {
 	select {
 	case s.called <- name:
 	default:
@@ -75,7 +76,7 @@ func TestCoordinator_StartsWhenShouldOwnAndFenceAcquired(t *testing.T) {
 		WithSharder(sh),
 	)
 
-	sink := &stubRunnable{called: make(chan string, 1)}
+	sink := &stubRunnable{called: make(chan multicluster.ClusterName, 1)}
 	c.AddRunnable(sink)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -127,7 +128,7 @@ func TestCoordinator_StopsAndReleasesWhenShouldOwnFalse(t *testing.T) {
 		WithSharder(sh),
 	)
 
-	c.AddRunnable(&stubRunnable{called: make(chan string, 1)})
+	c.AddRunnable(&stubRunnable{called: make(chan multicluster.ClusterName, 1)})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

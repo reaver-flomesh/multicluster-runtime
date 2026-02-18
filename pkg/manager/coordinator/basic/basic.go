@@ -45,7 +45,7 @@ func (c *Coordinator) AddRunnable(r multicluster.Aware) {
 }
 
 // Engage runs Engage on all registered runnables for this cluster.
-func (c *Coordinator) Engage(ctx context.Context, name string, cl cluster.Cluster) error {
+func (c *Coordinator) Engage(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) error {
 	c.mu.Lock()
 	rs := append([]multicluster.Aware(nil), c.runnables...)
 	c.mu.Unlock()
