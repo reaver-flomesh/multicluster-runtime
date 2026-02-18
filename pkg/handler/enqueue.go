@@ -21,12 +21,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 	mcreconcile "sigs.k8s.io/multicluster-runtime/pkg/reconcile"
 )
 
 // EnqueueRequestForObject wraps a controller-runtime handler.EnqueueRequestForOwner
 // to be compatible with multi-cluster.
-func EnqueueRequestForObject(clusterName string, cl cluster.Cluster) handler.TypedEventHandler[client.Object, mcreconcile.Request] {
+func EnqueueRequestForObject(clusterName multicluster.ClusterName, cl cluster.Cluster) handler.TypedEventHandler[client.Object, mcreconcile.Request] {
 	return Lift(&handler.EnqueueRequestForObject{})(clusterName, cl)
 }
 
@@ -39,7 +40,7 @@ func TypedEnqueueRequestForObject[object client.Object]() TypedEventHandlerFunc[
 // WithLowPriorityWhenUnchanged wraps a controller-runtime handler.WithLowPriorityWhenUnchanged
 // to be compatible with multi-cluster.
 func WithLowPriorityWhenUnchanged[object client.Object, request mcreconcile.ClusterAware[request]](u TypedEventHandlerFunc[object, request]) TypedEventHandlerFunc[object, request] {
-	return func(clusterName string, cl cluster.Cluster) handler.TypedEventHandler[object, request] {
+	return func(clusterName multicluster.ClusterName, cl cluster.Cluster) handler.TypedEventHandler[object, request] {
 		return handler.WithLowPriorityWhenUnchanged[object, request](u(clusterName, cl))
 	}
 }

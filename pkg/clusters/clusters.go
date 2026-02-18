@@ -52,8 +52,8 @@ type Clusters[T cluster.Cluster] struct {
 	WaitCacheTimeout time.Duration
 
 	lock     sync.RWMutex
-	clusters map[string]T
-	cancels  map[string]context.CancelFunc
+	clusters map[multicluster.ClusterName]T
+	cancels  map[multicluster.ClusterName]context.CancelFunc
 	// Indexers holds representations of all indexes that were applied
 	// and should be applied to clusters that are added.
 	indexers []Index
@@ -71,14 +71,14 @@ func New[T cluster.Cluster]() Clusters[T] {
 	return Clusters[T]{
 		EqualClusters:    EqualClusters[T],
 		WaitCacheTimeout: 30 * time.Second,
-		clusters:         make(map[string]T),
-		cancels:          make(map[string]context.CancelFunc),
+		clusters:         make(map[multicluster.ClusterName]T),
+		cancels:          make(map[multicluster.ClusterName]context.CancelFunc),
 		indexers:         []Index{},
 	}
 }
 
 // ClusterNames returns the names of all clusters in a sorted order.
-func (c *Clusters[T]) ClusterNames() []string {
+func (c *Clusters[T]) ClusterNames() []multicluster.ClusterName {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return slices.Sorted(maps.Keys(c.clusters))
@@ -86,12 +86,12 @@ func (c *Clusters[T]) ClusterNames() []string {
 
 // Get returns the cluster with the given name as a cluster.Cluster.
 // It implements the Get method from the Provider interface.
-func (c *Clusters[T]) Get(ctx context.Context, clusterName string) (cluster.Cluster, error) {
+func (c *Clusters[T]) Get(ctx context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	return c.GetTyped(ctx, clusterName)
 }
 
 // GetTyped returns the cluster with the given name.
-func (c *Clusters[T]) GetTyped(_ context.Context, clusterName string) (T, error) {
+func (c *Clusters[T]) GetTyped(_ context.Context, clusterName multicluster.ClusterName) (T, error) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -105,7 +105,7 @@ func (c *Clusters[T]) GetTyped(_ context.Context, clusterName string) (T, error)
 
 // Add adds a new cluster.
 // If a cluster with the given name already exists, it returns an error.
-func (c *Clusters[T]) Add(ctx context.Context, clusterName string, cl T, aware multicluster.Aware) error {
+func (c *Clusters[T]) Add(ctx context.Context, clusterName multicluster.ClusterName, cl T, aware multicluster.Aware) error {
 	ctx, err := c.add(ctx, clusterName, cl)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (c *Clusters[T]) Add(ctx context.Context, clusterName string, cl T, aware m
 	return nil
 }
 
-func (c *Clusters[T]) add(ctx context.Context, clusterName string, cl T) (context.Context, error) {
+func (c *Clusters[T]) add(ctx context.Context, clusterName multicluster.ClusterName, cl T) (context.Context, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -163,7 +163,7 @@ func (c *Clusters[T]) add(ctx context.Context, clusterName string, cl T) (contex
 }
 
 // Remove removes a cluster by name.
-func (c *Clusters[T]) Remove(clusterName string) {
+func (c *Clusters[T]) Remove(clusterName multicluster.ClusterName) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -185,7 +185,7 @@ func EqualClusters[T cluster.Cluster](a, b T) bool {
 // If a cluster with the name already exists it compares the
 // configuration as returned by cluster.GetConfig() to compare
 // clusters.
-func (c *Clusters[T]) AddOrReplace(ctx context.Context, clusterName string, cl T, aware multicluster.Aware) error {
+func (c *Clusters[T]) AddOrReplace(ctx context.Context, clusterName multicluster.ClusterName, cl T, aware multicluster.Aware) error {
 	existing, err := c.GetTyped(ctx, clusterName)
 	if err != nil {
 		// Cluster does not exist, add it

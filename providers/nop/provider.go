@@ -43,7 +43,7 @@ func (p *Provider) Start(ctx context.Context, mcAware multicluster.Aware) error 
 }
 
 // Get returns an error for any cluster name.
-func (p *Provider) Get(_ context.Context, clusterName string) (cluster.Cluster, error) {
+func (p *Provider) Get(_ context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	return nil, multicluster.ErrClusterNotFound
 }
 

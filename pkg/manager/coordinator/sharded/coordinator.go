@@ -108,7 +108,7 @@ type Coordinator struct {
 	// mu guards engaged and runnables.
 	mu sync.Mutex
 	// engaged tracks per-cluster engagement state keyed by cluster name.
-	engaged map[string]*engagement
+	engaged map[multicluster.ClusterName]*engagement
 	// runnables are the multicluster components to (de)start per cluster.
 	runnables []multicluster.Aware
 }
@@ -121,7 +121,7 @@ type Coordinator struct {
 // nextTry: throttle timestamp for fence acquisition retries.
 type engagement struct {
 	// name is the cluster identifier (e.g., namespace).
-	name string
+	name multicluster.ClusterName
 	// cl is the controller-runtime cluster handle for this engagement.
 	cl cluster.Cluster
 	// ctx is the engagement context; cancelling it stops sources/work.
@@ -144,7 +144,7 @@ func New(kube client.Client, log logr.Logger, opts ...Option) *Coordinator {
 		log:     log,
 		cfg:     defaultConfig(),
 		sharder: sharder.NewHRW(),
-		engaged: make(map[string]*engagement),
+		engaged: make(map[multicluster.ClusterName]*engagement),
 	}
 
 	for _, o := range opts {
@@ -200,7 +200,7 @@ func (c *Coordinator) Runnable() manager.Runnable {
 }
 
 // Engage registers a cluster for coordination.
-func (c *Coordinator) Engage(parent context.Context, name string, cl cluster.Cluster) error {
+func (c *Coordinator) Engage(parent context.Context, name multicluster.ClusterName, cl cluster.Cluster) error {
 	if err := parent.Err(); err != nil {
 		return err
 	}
@@ -224,7 +224,7 @@ func (c *Coordinator) Engage(parent context.Context, name string, cl cluster.Clu
 		c.engaged[name] = newEng
 
 		// cleanup tied to the *new* token; old goroutine will no-op (ee != token)
-		go func(pctx context.Context, key string, token *engagement) {
+		go func(pctx context.Context, key multicluster.ClusterName, token *engagement) {
 			<-pctx.Done()
 			c.mu.Lock()
 			if ee, ok := c.engaged[key]; ok && ee == token {
@@ -243,7 +243,7 @@ func (c *Coordinator) Engage(parent context.Context, name string, cl cluster.Clu
 	} else {
 		eng := &engagement{name: name, cl: cl}
 		c.engaged[name] = eng
-		go func(pctx context.Context, key string, token *engagement) {
+		go func(pctx context.Context, key multicluster.ClusterName, token *engagement) {
 			<-pctx.Done()
 			c.mu.Lock()
 			if ee, ok := c.engaged[key]; ok && ee == token {
@@ -273,7 +273,7 @@ func (c *Coordinator) recompute(parent context.Context) {
 	self := c.self
 
 	type toStart struct {
-		name string
+		name multicluster.ClusterName
 		cl   cluster.Cluster
 		ctx  context.Context
 	}
@@ -285,13 +285,13 @@ func (c *Coordinator) recompute(parent context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for name, engm := range c.engaged {
-		should := c.sharder.ShouldOwn(name, peers, self)
+		should := c.sharder.ShouldOwn(name.String(), peers, self)
 
 		switch {
 		case should && !engm.started:
 			// ensure fence exists
 			if engm.fence == nil {
-				onLost := func(cluster string) func() {
+				onLost := func(cluster multicluster.ClusterName) func() {
 					return func() {
 						// best-effort stop if we lose the lease mid-flight
 						c.log.Info("lease lost; stopping", "cluster", cluster, "peer", self.ID)
@@ -305,7 +305,7 @@ func (c *Coordinator) recompute(parent context.Context) {
 				}(name)
 				engm.fence = newLeaseGuard(
 					c.kube,
-					c.cfg.FenceNS, c.fenceName(name), c.self.ID,
+					c.cfg.FenceNS, c.fenceName(name.String()), c.self.ID,
 					c.cfg.LeaseDuration, c.cfg.LeaseRenew, onLost,
 				)
 			}
@@ -349,7 +349,7 @@ func (c *Coordinator) recompute(parent context.Context) {
 	}
 }
 
-func (c *Coordinator) startForCluster(ctx context.Context, name string, cl cluster.Cluster) {
+func (c *Coordinator) startForCluster(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) {
 	for _, r := range c.runnables {
 		if err := r.Engage(ctx, name, cl); err != nil {
 			c.log.Error(err, "failed to engage", "cluster", name)

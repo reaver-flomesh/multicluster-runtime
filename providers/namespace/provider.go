@@ -47,8 +47,8 @@ type Provider struct {
 
 	log       logr.Logger
 	lock      sync.RWMutex
-	clusters  map[string]cluster.Cluster
-	cancelFns map[string]context.CancelFunc
+	clusters  map[multicluster.ClusterName]cluster.Cluster
+	cancelFns map[multicluster.ClusterName]context.CancelFunc
 }
 
 // New creates a new namespace provider.
@@ -56,8 +56,8 @@ func New(cl cluster.Cluster) *Provider {
 	return &Provider{
 		cluster:   cl,
 		log:       log.Log.WithName("namespaced-cluster-provider"),
-		clusters:  map[string]cluster.Cluster{},
-		cancelFns: map[string]context.CancelFunc{},
+		clusters:  map[multicluster.ClusterName]cluster.Cluster{},
+		cancelFns: map[multicluster.ClusterName]context.CancelFunc{},
 	}
 }
 
@@ -77,8 +77,9 @@ func (p *Provider) Start(ctx context.Context, aware multicluster.Aware) error {
 			ns := obj.(*corev1.Namespace)
 			p.log.WithValues("namespace", ns.Name).Info("Encountered namespace")
 
+			clusterName := multicluster.ClusterName(ns.Name)
 			p.lock.RLock()
-			_, ok := p.clusters[ns.Name]
+			_, ok := p.clusters[clusterName]
 			p.lock.RUnlock()
 
 			if ok {
@@ -88,26 +89,27 @@ func (p *Provider) Start(ctx context.Context, aware multicluster.Aware) error {
 			// create new cluster
 			p.lock.Lock()
 			clusterCtx, cancel := context.WithCancel(ctx)
-			cl := &NamespacedCluster{clusterName: ns.Name, Cluster: p.cluster}
-			p.clusters[ns.Name] = cl
-			p.cancelFns[ns.Name] = cancel
+			cl := &NamespacedCluster{clusterName: clusterName, Cluster: p.cluster}
+			p.clusters[clusterName] = cl
+			p.cancelFns[clusterName] = cancel
 			p.lock.Unlock()
 
-			if err := p.mcAware.Engage(clusterCtx, ns.Name, cl); err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to engage manager with cluster %q: %w", ns.Name, err))
+			if err := p.mcAware.Engage(clusterCtx, clusterName, cl); err != nil {
+				utilruntime.HandleError(fmt.Errorf("failed to engage manager with cluster %q: %w", clusterName, err))
 
 				// cleanup
 				p.lock.Lock()
-				delete(p.clusters, ns.Name)
-				delete(p.cancelFns, ns.Name)
+				delete(p.clusters, clusterName)
+				delete(p.cancelFns, clusterName)
 				p.lock.Unlock()
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			ns := obj.(*corev1.Namespace)
 
+			clusterName := multicluster.ClusterName(ns.Name)
 			p.lock.RLock()
-			cancel, ok := p.cancelFns[ns.Name]
+			cancel, ok := p.cancelFns[clusterName]
 			if !ok {
 				p.lock.RUnlock()
 				return
@@ -118,9 +120,9 @@ func (p *Provider) Start(ctx context.Context, aware multicluster.Aware) error {
 
 			// stop and forget
 			p.lock.Lock()
-			p.cancelFns[ns.Name]()
-			delete(p.clusters, ns.Name)
-			delete(p.cancelFns, ns.Name)
+			p.cancelFns[clusterName]()
+			delete(p.clusters, clusterName)
+			delete(p.cancelFns, clusterName)
 			p.lock.Unlock()
 		},
 	}); err != nil {
@@ -133,7 +135,7 @@ func (p *Provider) Start(ctx context.Context, aware multicluster.Aware) error {
 }
 
 // Get returns a cluster by name.
-func (p *Provider) Get(_ context.Context, clusterName string) (cluster.Cluster, error) {
+func (p *Provider) Get(_ context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	if cl, ok := p.clusters[clusterName]; ok {

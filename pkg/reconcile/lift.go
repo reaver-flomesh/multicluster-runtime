@@ -18,13 +18,15 @@ package reconcile
 
 import (
 	"fmt"
+
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 )
 
 // WithCluster extends a request with a cluster name.
 type WithCluster[request comparable] struct {
 	Request request
 
-	ClusterName string
+	ClusterName multicluster.ClusterName
 }
 
 // String returns the string representation.
@@ -32,16 +34,16 @@ func (r WithCluster[request]) String() string {
 	if r.ClusterName == "" {
 		return fmt.Sprint(r.Request)
 	}
-	return "cluster://" + r.ClusterName + "/" + fmt.Sprint(r.Request)
+	return "cluster://" + r.ClusterName.String() + "/" + fmt.Sprint(r.Request)
 }
 
 // Cluster returns the name of the cluster that the request belongs to.
-func (r WithCluster[request]) Cluster() string {
+func (r WithCluster[request]) Cluster() multicluster.ClusterName {
 	return r.ClusterName
 }
 
 // WithCluster sets the name of the cluster that the request belongs to.
-func (r WithCluster[request]) WithCluster(name string) WithCluster[request] {
+func (r WithCluster[request]) WithCluster(name multicluster.ClusterName) WithCluster[request] {
 	r.ClusterName = name
 	return r
 }

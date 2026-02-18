@@ -48,6 +48,7 @@ import (
 	mccontroller "sigs.k8s.io/multicluster-runtime/pkg/controller"
 	mchandler "sigs.k8s.io/multicluster-runtime/pkg/handler"
 	mcmanager "sigs.k8s.io/multicluster-runtime/pkg/manager"
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 	mcreconcile "sigs.k8s.io/multicluster-runtime/pkg/reconcile"
 	mcsource "sigs.k8s.io/multicluster-runtime/pkg/source"
 	"sigs.k8s.io/multicluster-runtime/providers/clusters"
@@ -625,7 +626,7 @@ var _ = Describe("application", func() {
 			By("adding a controller to the manager", func() {
 				err := ControllerManagedBy(mgr).
 					For(&appsv1.Deployment{},
-						WithClusterFilter(func(clusterName string, cluster cluster.Cluster) bool {
+						WithClusterFilter(func(clusterName multicluster.ClusterName, cluster cluster.Cluster) bool {
 							// this filter should be applied
 							filterFunctionCalled.Store(true)
 							return false
@@ -690,7 +691,7 @@ var _ = Describe("application", func() {
 			By("adding a controller to the manager", func() {
 				err := ControllerManagedBy(mgr).
 					For(&appsv1.Deployment{},
-						WithClusterFilter(func(clusterName string, cluster cluster.Cluster) bool {
+						WithClusterFilter(func(clusterName multicluster.ClusterName, cluster cluster.Cluster) bool {
 							// this filter should be applied
 							filterFunctionCalled.Store(true)
 							return true

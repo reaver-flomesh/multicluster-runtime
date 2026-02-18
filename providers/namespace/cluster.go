@@ -25,17 +25,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
+
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 )
 
 // NamespacedCluster is a cluster that operates on a specific namespace.
 type NamespacedCluster struct {
-	clusterName string
+	clusterName multicluster.ClusterName
 	cluster.Cluster
 }
 
 // Name returns the name of the cluster.
 func (c *NamespacedCluster) Name() string {
-	return c.clusterName
+	return c.clusterName.String()
 }
 
 // GetCache returns a cache.Cache.

@@ -187,12 +187,12 @@ func (p *Provider) startProvider(ctx context.Context, providerName string, aware
 	p.lock.RUnlock()
 }
 
-func (p *Provider) splitClusterName(clusterName string) (string, string) {
-	parts := strings.SplitN(clusterName, p.opts.Separator, 2)
+func (p *Provider) splitClusterName(clusterName multicluster.ClusterName) (string, multicluster.ClusterName) {
+	parts := strings.SplitN(clusterName.String(), p.opts.Separator, 2)
 	if len(parts) < 2 {
 		return "", clusterName
 	}
-	return parts[0], parts[1]
+	return parts[0], multicluster.ClusterName(parts[1])
 }
 
 // ProviderNames returns the sorted list of prefixes for the
@@ -260,7 +260,7 @@ func (p *Provider) RemoveProvider(providerName string) {
 }
 
 // Get returns a cluster by name.
-func (p *Provider) Get(ctx context.Context, input string) (cluster.Cluster, error) {
+func (p *Provider) Get(ctx context.Context, input multicluster.ClusterName) (cluster.Cluster, error) {
 	providerName, clusterName := p.splitClusterName(input)
 	log := p.log.WithValues("providerName", providerName, "clusterName", clusterName)
 	log.V(1).Info("getting cluster")

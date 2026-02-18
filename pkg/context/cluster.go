@@ -24,6 +24,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 	mcreconcile "sigs.k8s.io/multicluster-runtime/pkg/reconcile"
 )
 
@@ -32,13 +33,13 @@ type clusterKeyType string
 const clusterKey clusterKeyType = "cluster"
 
 // WithCluster returns a new context with the given cluster.
-func WithCluster(ctx context.Context, cluster string) context.Context {
+func WithCluster(ctx context.Context, cluster multicluster.ClusterName) context.Context {
 	return context.WithValue(ctx, clusterKey, cluster)
 }
 
 // ClusterFrom returns the cluster from the context.
-func ClusterFrom(ctx context.Context) (string, bool) {
-	cluster, ok := ctx.Value(clusterKey).(string)
+func ClusterFrom(ctx context.Context) (multicluster.ClusterName, bool) {
+	cluster, ok := ctx.Value(clusterKey).(multicluster.ClusterName)
 	return cluster, ok
 }
 

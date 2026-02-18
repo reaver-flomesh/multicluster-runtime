@@ -107,7 +107,7 @@ type Provider struct {
 
 	lock     sync.RWMutex
 	mcMgr    mcmanager.Manager
-	clusters map[string]activeCluster
+	clusters map[multicluster.ClusterName]activeCluster
 	indexers []index
 }
 
@@ -116,7 +116,7 @@ type Provider struct {
 func New(opts Options) *Provider {
 	p := &Provider{
 		opts:     opts,
-		clusters: map[string]activeCluster{},
+		clusters: map[multicluster.ClusterName]activeCluster{},
 	}
 	setDefaults(&p.opts)
 	return p
@@ -146,7 +146,7 @@ func (p *Provider) SetupWithManager(mgr mcmanager.Manager) error {
 }
 
 // Get returns the cluster with the given name, if it is known.
-func (p *Provider) Get(_ context.Context, clusterName string) (cluster.Cluster, error) {
+func (p *Provider) Get(_ context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -159,7 +159,7 @@ func (p *Provider) Get(_ context.Context, clusterName string) (cluster.Cluster, 
 
 // Reconcile reconciles CAPI Cluster resources.
 func (p *Provider) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	key := req.NamespacedName.String()
+	key := multicluster.ClusterName(req.NamespacedName.String())
 	log := log.FromContext(ctx)
 	log.Info("Reconciling Cluster")
 
@@ -230,7 +230,7 @@ func (p *Provider) hashKubeconfig(kubeconfigData []byte) string {
 }
 
 // createAndEngageCluster creates a new cluster, starts it, and engages it with the manager.
-func (p *Provider) createAndEngageCluster(ctx context.Context, key string, ccl *capiv1beta1.Cluster, cfg *rest.Config, hashStr string) error {
+func (p *Provider) createAndEngageCluster(ctx context.Context, key multicluster.ClusterName, ccl *capiv1beta1.Cluster, cfg *rest.Config, hashStr string) error {
 	log := log.FromContext(ctx)
 	log.Info("Creating new cluster")
 
@@ -294,7 +294,7 @@ func (p *Provider) applyIndexers(ctx context.Context, cl cluster.Cluster) error 
 }
 
 // removeCluster removes a cluster by name, cancelling its context.
-func (p *Provider) removeCluster(ctx context.Context, key string) {
+func (p *Provider) removeCluster(ctx context.Context, key multicluster.ClusterName) {
 	log := log.FromContext(ctx)
 
 	p.lock.Lock()
@@ -322,7 +322,7 @@ func (p *Provider) IndexField(ctx context.Context, obj client.Object, field stri
 		field:        field,
 		extractValue: extractValue,
 	})
-	clusters := make(map[string]activeCluster, len(p.clusters))
+	clusters := make(map[multicluster.ClusterName]activeCluster, len(p.clusters))
 	maps.Copy(clusters, p.clusters)
 	p.lock.Unlock()
 
@@ -337,7 +337,7 @@ func (p *Provider) IndexField(ctx context.Context, obj client.Object, field stri
 }
 
 // ListClusters returns the names of all engaged clusters.
-func (p *Provider) ListClusters() []string {
+func (p *Provider) ListClusters() []multicluster.ClusterName {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 

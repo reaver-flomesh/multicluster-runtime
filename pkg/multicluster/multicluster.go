@@ -33,6 +33,11 @@ func (clusterName ClusterName) String() string {
 	return string(clusterName)
 }
 
+// Empty is a helper method that returns true if the ClusterName is empty.
+func (clusterName ClusterName) Empty() bool {
+	return clusterName.String() == ""
+}
+
 // Aware is an interface that can be implemented by components that
 // can engage and disengage when clusters are added or removed at runtime.
 type Aware interface {

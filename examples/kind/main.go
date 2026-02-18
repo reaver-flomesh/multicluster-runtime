@@ -75,7 +75,7 @@ func main() {
 					corev1.EventTypeNormal,
 					"ConfigMapFound",
 					"ConfigMapReconcile",
-					"ConfigMap found in cluster "+req.ClusterName,
+					"ConfigMap found in cluster "+req.ClusterName.String(),
 				)
 
 				log.Info("ConfigMap found", "namespace", cm.Namespace, "name", cm.Name, "cluster", req.ClusterName)

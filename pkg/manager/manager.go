@@ -39,7 +39,7 @@ import (
 )
 
 // LocalCluster is the name of the local cluster.
-const LocalCluster = ""
+const LocalCluster = multicluster.ClusterName("")
 
 // Manager is a multi-cluster-aware manager, like the controller-runtime Cluster,
 // but without the direct embedding of cluster.Cluster.
@@ -91,13 +91,13 @@ type Manager interface {
 	// returns an existing cluster if it has been created before.
 	// If no cluster is known to the provider under the given cluster name,
 	// an error should be returned.
-	GetCluster(ctx context.Context, clusterName string) (cluster.Cluster, error)
+	GetCluster(ctx context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error)
 
 	// ClusterFromContext returns the default cluster set in the context.
 	ClusterFromContext(ctx context.Context) (cluster.Cluster, error)
 
 	// GetManager returns a manager for the given cluster name.
-	GetManager(ctx context.Context, clusterName string) (manager.Manager, error)
+	GetManager(ctx context.Context, clusterName multicluster.ClusterName) (manager.Manager, error)
 
 	// GetLocalManager returns the underlying controller-runtime manager of the
 	// host. This is equivalent to GetManager(LocalCluster).
@@ -173,7 +173,7 @@ func WithMultiCluster(mgr manager.Manager, provider multicluster.Provider, mcOpt
 // returns an existing cluster if it has been created before.
 // If no cluster is known to the provider under the given cluster name,
 // an error should be returned.
-func (m *mcManager) GetCluster(ctx context.Context, clusterName string) (cluster.Cluster, error) {
+func (m *mcManager) GetCluster(ctx context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	if clusterName == LocalCluster {
 		return m.Manager, nil
 	}
@@ -211,11 +211,11 @@ func (m *mcManager) Add(r Runnable) error {
 
 // Engage gets called when the component should start operations for the given
 // Cluster. ctx is cancelled when the cluster is disengaged.
-func (m *mcManager) Engage(ctx context.Context, name string, cl cluster.Cluster) error {
+func (m *mcManager) Engage(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) error {
 	return m.coord.Engage(ctx, name, cl)
 }
 
-func (m *mcManager) GetManager(ctx context.Context, clusterName string) (manager.Manager, error) {
+func (m *mcManager) GetManager(ctx context.Context, clusterName multicluster.ClusterName) (manager.Manager, error) {
 	cl, err := m.GetCluster(ctx, clusterName)
 	if err != nil {
 		return nil, err

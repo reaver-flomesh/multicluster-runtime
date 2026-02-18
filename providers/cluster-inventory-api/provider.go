@@ -79,9 +79,9 @@ type Provider struct {
 
 	lock       sync.RWMutex
 	mcMgr      mcmanager.Manager
-	clusters   map[string]cluster.Cluster
-	cancelFns  map[string]context.CancelFunc
-	kubeconfig map[string]*rest.Config
+	clusters   map[multicluster.ClusterName]cluster.Cluster
+	cancelFns  map[multicluster.ClusterName]context.CancelFunc
+	kubeconfig map[multicluster.ClusterName]*rest.Config
 	indexers   []index
 }
 
@@ -111,9 +111,9 @@ func New(opts Options) (*Provider, error) {
 	p := &Provider{
 		opts:       opts,
 		log:        logger,
-		clusters:   map[string]cluster.Cluster{},
-		cancelFns:  map[string]context.CancelFunc{},
-		kubeconfig: map[string]*rest.Config{},
+		clusters:   map[multicluster.ClusterName]cluster.Cluster{},
+		cancelFns:  map[multicluster.ClusterName]context.CancelFunc{},
+		kubeconfig: map[multicluster.ClusterName]*rest.Config{},
 		strategy:   strategy,
 	}
 	setDefaults(&p.opts)
@@ -157,7 +157,7 @@ func (p *Provider) SetupWithManager(mgr mcmanager.Manager) error {
 }
 
 // Get returns the cluster with the given name, if it is known.
-func (p *Provider) Get(_ context.Context, clusterName string) (cluster.Cluster, error) {
+func (p *Provider) Get(_ context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	if cl, ok := p.clusters[clusterName]; ok {
@@ -169,7 +169,7 @@ func (p *Provider) Get(_ context.Context, clusterName string) (cluster.Cluster, 
 
 // Reconcile is the reconcile loop for the Cluster Inventory API cluster Provider.
 func (p *Provider) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	key := req.NamespacedName.String()
+	key := multicluster.ClusterName(req.NamespacedName.String())
 
 	log := p.log.WithValues("clusterprofile", key)
 	log.Info("Reconciling ClusterProfile")

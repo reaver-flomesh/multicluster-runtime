@@ -50,12 +50,12 @@ type Provider struct {
 	log logr.Logger
 
 	lock    sync.Mutex
-	waiting map[string]cluster.Cluster
+	waiting map[multicluster.ClusterName]cluster.Cluster
 	input   chan item
 }
 
 type item struct {
-	clusterName string
+	clusterName multicluster.ClusterName
 	cluster     cluster.Cluster
 }
 
@@ -65,7 +65,7 @@ func New() *Provider {
 	p.log = log.Log.WithName("clusters-cluster-provider")
 	p.Clusters = clusters.New[cluster.Cluster]()
 	p.Clusters.ErrorHandler = p.log.Error
-	p.waiting = make(map[string]cluster.Cluster)
+	p.waiting = make(map[multicluster.ClusterName]cluster.Cluster)
 	return p
 }
 
@@ -113,7 +113,7 @@ func (p *Provider) Start(ctx context.Context, aware multicluster.Aware) error {
 // Add adds a new cluster to the provider. If the provider has not been
 // started yet it queues the cluster to be added when the provider
 // starts.
-func (p *Provider) Add(ctx context.Context, clusterName string, cl cluster.Cluster) error {
+func (p *Provider) Add(ctx context.Context, clusterName multicluster.ClusterName, cl cluster.Cluster) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	if p.input != nil {

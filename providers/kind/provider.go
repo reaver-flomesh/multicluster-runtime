@@ -19,6 +19,8 @@ package kind
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -56,8 +58,8 @@ func New(opts Options) *Provider {
 	return &Provider{
 		opts:      opts,
 		log:       log.Log.WithName("kind-cluster-provider"),
-		clusters:  map[string]cluster.Cluster{},
-		cancelFns: map[string]context.CancelFunc{},
+		clusters:  map[multicluster.ClusterName]cluster.Cluster{},
+		cancelFns: map[multicluster.ClusterName]context.CancelFunc{},
 	}
 }
 
@@ -74,13 +76,13 @@ type Provider struct {
 	opts      Options
 	log       logr.Logger
 	lock      sync.RWMutex
-	clusters  map[string]cluster.Cluster
-	cancelFns map[string]context.CancelFunc
+	clusters  map[multicluster.ClusterName]cluster.Cluster
+	cancelFns map[multicluster.ClusterName]context.CancelFunc
 	indexers  []index
 }
 
 // Get returns the cluster with the given name, if it is known.
-func (p *Provider) Get(ctx context.Context, clusterName string) (cluster.Cluster, error) {
+func (p *Provider) Get(ctx context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	if cl, ok := p.clusters[clusterName]; ok {
@@ -109,13 +111,17 @@ func (p *Provider) Start(ctx context.Context, mcAware multicluster.Aware) error 
 			p.log.Info("failed to list kind clusters", "error", err)
 			return false, nil // keep going
 		}
+		clusterNames := make([]multicluster.ClusterName, len(list))
+		for i, name := range list {
+			clusterNames[i] = multicluster.ClusterName(name)
+		}
 
 		// start new clusters
-		for _, clusterName := range list {
+		for _, clusterName := range clusterNames {
 			log := p.log.WithValues("cluster", clusterName)
 
 			// skip?
-			if p.opts.Prefix != "" && !strings.HasPrefix(clusterName, p.opts.Prefix) {
+			if p.opts.Prefix != "" && !strings.HasPrefix(clusterName.String(), p.opts.Prefix) {
 				continue
 			}
 			p.lock.RLock()
@@ -126,7 +132,7 @@ func (p *Provider) Start(ctx context.Context, mcAware multicluster.Aware) error 
 			p.lock.RUnlock()
 
 			// create a new cluster
-			kubeconfig, err := provider.KubeConfig(clusterName, false)
+			kubeconfig, err := provider.KubeConfig(clusterName.String(), false)
 			if err != nil {
 				p.log.Info("failed to get kind kubeconfig", "error", err)
 				return false, nil // keep going
@@ -188,13 +194,10 @@ func (p *Provider) Start(ctx context.Context, mcAware multicluster.Aware) error 
 		// remove old clusters
 		kindNames := sets.New(list...)
 		p.lock.Lock()
-		clusterNames := make([]string, 0, len(p.clusters))
-		for name := range p.clusters {
-			clusterNames = append(clusterNames, name)
-		}
+		clusterNames = slices.Collect(maps.Keys(p.clusters))
 		p.lock.Unlock()
 		for _, name := range clusterNames {
-			if !kindNames.Has(name) {
+			if !kindNames.Has(name.String()) {
 				// stop and forget
 				p.lock.Lock()
 				p.cancelFns[name]()

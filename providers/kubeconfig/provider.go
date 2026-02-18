@@ -66,7 +66,7 @@ func New(opts Options) *Provider {
 	return &Provider{
 		opts:     opts,
 		log:      log.Log.WithName("kubeconfig-provider"),
-		clusters: map[string]activeCluster{},
+		clusters: map[multicluster.ClusterName]activeCluster{},
 	}
 }
 
@@ -96,7 +96,7 @@ type Provider struct {
 	opts     Options
 	log      logr.Logger
 	lock     sync.RWMutex // protects clusters and indexers
-	clusters map[string]activeCluster
+	clusters map[multicluster.ClusterName]activeCluster
 	indexers []index
 	mgr      mcmanager.Manager
 }
@@ -109,7 +109,7 @@ type activeCluster struct {
 }
 
 // getCluster retrieves a cluster by name with read lock
-func (p *Provider) getCluster(clusterName string) (activeCluster, bool) {
+func (p *Provider) getCluster(clusterName multicluster.ClusterName) (activeCluster, bool) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -118,7 +118,7 @@ func (p *Provider) getCluster(clusterName string) (activeCluster, bool) {
 }
 
 // setCluster adds a cluster with write lock
-func (p *Provider) setCluster(clusterName string, ac activeCluster) {
+func (p *Provider) setCluster(clusterName multicluster.ClusterName, ac activeCluster) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -134,7 +134,7 @@ func (p *Provider) addIndexer(idx index) {
 }
 
 // Get returns the cluster with the given name, if it is known.
-func (p *Provider) Get(ctx context.Context, clusterName string) (cluster.Cluster, error) {
+func (p *Provider) Get(ctx context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	ac, exists := p.getCluster(clusterName)
 	if !exists {
 		return nil, multicluster.ErrClusterNotFound
@@ -184,12 +184,12 @@ func (p *Provider) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result
 	}
 	if secret == nil {
 		// Secret not found, remove cluster if it exists
-		p.removeCluster(req.Name)
+		p.removeCluster(multicluster.ClusterName(req.Name))
 		return ctrl.Result{}, nil
 	}
 
 	// Extract cluster name and create logger
-	clusterName := secret.Name
+	clusterName := multicluster.ClusterName(secret.Name)
 	log := p.log.WithValues("cluster", clusterName, "secret", fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
 
 	// Handle secret deletion, this is usually only hit if there is a finalizer on the secret.
@@ -250,7 +250,7 @@ func (p *Provider) hashKubeconfig(kubeconfigData []byte) string {
 }
 
 // createAndEngageCluster creates a new cluster, sets it up, stores it, and engages it with the manager
-func (p *Provider) createAndEngageCluster(ctx context.Context, clusterName string, kubeconfigData []byte, hashStr string, log logr.Logger) error {
+func (p *Provider) createAndEngageCluster(ctx context.Context, clusterName multicluster.ClusterName, kubeconfigData []byte, hashStr string, log logr.Logger) error {
 	// Parse the kubeconfig
 	restConfig, err := clientcmd.RESTConfigFromKubeConfig(kubeconfigData)
 	if err != nil {
@@ -351,11 +351,11 @@ func (p *Provider) IndexField(ctx context.Context, obj client.Object, field stri
 }
 
 // ListClusters returns a list of all discovered clusters.
-func (p *Provider) ListClusters() []string {
+func (p *Provider) ListClusters() []multicluster.ClusterName {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	result := make([]string, 0, len(p.clusters))
+	result := make([]multicluster.ClusterName, 0, len(p.clusters))
 	for name := range p.clusters {
 		result = append(result, name)
 	}
@@ -363,7 +363,7 @@ func (p *Provider) ListClusters() []string {
 }
 
 // removeCluster removes a cluster by name with write lock and cleanup
-func (p *Provider) removeCluster(clusterName string) {
+func (p *Provider) removeCluster(clusterName multicluster.ClusterName) {
 	log := p.log.WithValues("cluster", clusterName)
 
 	p.lock.Lock()

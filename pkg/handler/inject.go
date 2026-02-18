@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 	mcreconcile "sigs.k8s.io/multicluster-runtime/pkg/reconcile"
 )
 
@@ -34,7 +35,7 @@ import (
 // request type and injects the cluster name. In contrast to TypeWithCluster,
 // this function does not lift the type to cluster-awareness.
 func TypedInjectCluster[object client.Object, request mcreconcile.ClusterAware[request]](h handler.TypedEventHandler[object, request]) TypedEventHandlerFunc[object, request] {
-	return func(clusterName string, cl cluster.Cluster) handler.TypedEventHandler[object, request] {
+	return func(clusterName multicluster.ClusterName, cl cluster.Cluster) handler.TypedEventHandler[object, request] {
 		return &clusterInjectingHandler[object, request]{h: h, clusterName: clusterName}
 	}
 }
@@ -43,7 +44,7 @@ var _ handler.TypedEventHandler[client.Object, mcreconcile.Request] = &clusterHa
 
 type clusterInjectingHandler[object client.Object, request mcreconcile.ClusterAware[request]] struct {
 	h           handler.TypedEventHandler[object, request]
-	clusterName string
+	clusterName multicluster.ClusterName
 }
 
 // Create implements EventHandler.
@@ -70,7 +71,7 @@ var _ workqueue.TypedRateLimitingInterface[mcreconcile.Request] = &clusterInject
 
 type clusterInjectingQueue[request mcreconcile.ClusterAware[request]] struct {
 	q  workqueue.TypedRateLimitingInterface[request]
-	cl string
+	cl multicluster.ClusterName
 }
 
 func (c clusterInjectingQueue[request]) Add(item request) {

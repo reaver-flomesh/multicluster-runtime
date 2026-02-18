@@ -30,13 +30,13 @@ var _ multicluster.ProviderRunnable = &Provider{}
 
 // Provider is a provider that engages the passed cluster.
 type Provider struct {
-	name string
+	name multicluster.ClusterName
 	cl   cluster.Cluster
 }
 
 // New returns a provider engaging the passed cluster under the given name.
 // It does not start the passed cluster.
-func New(name string, cl cluster.Cluster) *Provider {
+func New(name multicluster.ClusterName, cl cluster.Cluster) *Provider {
 	return &Provider{
 		name: name,
 		cl:   cl,
@@ -53,7 +53,7 @@ func (p *Provider) Start(ctx context.Context, mcAware multicluster.Aware) error 
 }
 
 // Get returns the cluster with the given name.
-func (p *Provider) Get(_ context.Context, clusterName string) (cluster.Cluster, error) {
+func (p *Provider) Get(_ context.Context, clusterName multicluster.ClusterName) (cluster.Cluster, error) {
 	if clusterName == p.name {
 		return p.cl, nil
 	}

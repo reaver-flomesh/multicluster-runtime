@@ -30,13 +30,15 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"sigs.k8s.io/multicluster-runtime/pkg/multicluster"
 )
 
 var _ cache.Cache = &NamespacedCache{}
 
 // NamespacedCache is a cache that operates on a specific namespace.
 type NamespacedCache struct {
-	clusterName string
+	clusterName multicluster.ClusterName
 	cache.Cache
 }
 
@@ -45,7 +47,7 @@ func (c *NamespacedCache) Get(ctx context.Context, key client.ObjectKey, obj cli
 	if key.Namespace != corev1.NamespaceDefault {
 		return apierrors.NewNotFound(schema.GroupResource{}, key.Name)
 	}
-	key.Namespace = c.clusterName
+	key.Namespace = c.clusterName.String()
 	if err := c.Cache.Get(ctx, key, obj, opts...); err != nil {
 		return err
 	}
@@ -104,16 +106,17 @@ func (c *NamespacedCache) RemoveInformer(ctx context.Context, obj client.Object)
 
 // ScopedInformer is an informer that operates on a specific namespace.
 type ScopedInformer struct {
-	clusterName string
+	clusterName multicluster.ClusterName
 	cache.Informer
 }
 
 // AddEventHandler adds an event handler to the informer.
 func (i *ScopedInformer) AddEventHandler(handler toolscache.ResourceEventHandler) (toolscache.ResourceEventHandlerRegistration, error) {
+	clusterNameStr := i.clusterName.String()
 	return i.Informer.AddEventHandler(toolscache.ResourceEventHandlerDetailedFuncs{
 		AddFunc: func(obj interface{}, isInInitialList bool) {
 			cobj := obj.(client.Object)
-			if cobj.GetNamespace() == i.clusterName {
+			if cobj.GetNamespace() == clusterNameStr {
 				cobj := cobj.DeepCopyObject().(client.Object)
 				cobj.SetNamespace(corev1.NamespaceDefault)
 				handler.OnAdd(cobj, isInInitialList)
@@ -122,7 +125,7 @@ func (i *ScopedInformer) AddEventHandler(handler toolscache.ResourceEventHandler
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			cobj := newObj.(client.Object)
 			cold := oldObj.(client.Object)
-			if cobj.GetNamespace() == i.clusterName {
+			if cobj.GetNamespace() == clusterNameStr {
 				cobj := cobj.DeepCopyObject().(client.Object)
 				cobj.SetNamespace(corev1.NamespaceDefault)
 				cold := cold.DeepCopyObject().(client.Object)
@@ -135,7 +138,7 @@ func (i *ScopedInformer) AddEventHandler(handler toolscache.ResourceEventHandler
 				obj = tombStone.Obj
 			}
 			cobj := obj.(client.Object)
-			if cobj.GetNamespace() == i.clusterName {
+			if cobj.GetNamespace() == clusterNameStr {
 				cobj := cobj.DeepCopyObject().(client.Object)
 				cobj.SetNamespace(corev1.NamespaceDefault)
 				handler.OnDelete(cobj)
@@ -151,10 +154,11 @@ func (i *ScopedInformer) AddEventHandlerWithResyncPeriod(handler toolscache.Reso
 
 // AddEventHandlerWithOptions adds an event handler to the informer, passing along options to configure its behaviour.
 func (i *ScopedInformer) AddEventHandlerWithOptions(handler toolscache.ResourceEventHandler, options toolscache.HandlerOptions) (toolscache.ResourceEventHandlerRegistration, error) {
+	clusterNameStr := i.clusterName.String()
 	return i.Informer.AddEventHandlerWithOptions(toolscache.ResourceEventHandlerDetailedFuncs{
 		AddFunc: func(obj interface{}, isInInitialList bool) {
 			cobj := obj.(client.Object)
-			if cobj.GetNamespace() == i.clusterName {
+			if cobj.GetNamespace() == clusterNameStr {
 				cobj := cobj.DeepCopyObject().(client.Object)
 				cobj.SetNamespace(corev1.NamespaceDefault)
 				handler.OnAdd(cobj, isInInitialList)
@@ -162,7 +166,7 @@ func (i *ScopedInformer) AddEventHandlerWithOptions(handler toolscache.ResourceE
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			obj := newObj.(client.Object)
-			if obj.GetNamespace() == i.clusterName {
+			if obj.GetNamespace() == clusterNameStr {
 				obj := obj.DeepCopyObject().(client.Object)
 				obj.SetNamespace(corev1.NamespaceDefault)
 				old := oldObj.(client.Object).DeepCopyObject().(client.Object)
@@ -175,7 +179,7 @@ func (i *ScopedInformer) AddEventHandlerWithOptions(handler toolscache.ResourceE
 				obj = tombStone.Obj
 			}
 			cobj := obj.(client.Object)
-			if cobj.GetNamespace() == i.clusterName {
+			if cobj.GetNamespace() == clusterNameStr {
 				cobj := cobj.DeepCopyObject().(client.Object)
 				cobj.SetNamespace(corev1.NamespaceDefault)
 				handler.OnDelete(cobj)
