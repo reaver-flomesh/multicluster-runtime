@@ -205,7 +205,7 @@ func (m *mcManager) GetProvider() multicluster.Provider {
 // Add will set requested dependencies on the component, and cause the component to be
 // started when Start is called.
 func (m *mcManager) Add(r Runnable) error {
-	m.coord.AddRunnable(r)
+	m.coord.AddAware(r)
 	return m.Manager.Add(r)
 }
 
