@@ -105,18 +105,18 @@ type Coordinator struct {
 	// cfg holds all synchronization/fencing configuration.
 	cfg Config
 
-	// mu guards engaged and runnables.
+	// mu guards engaged and awares.
 	mu sync.Mutex
 	// engaged tracks per-cluster engagement state keyed by cluster name.
 	engaged map[multicluster.ClusterName]*engagement
-	// runnables are the multicluster components to (de)start per cluster.
-	runnables []multicluster.Aware
+	// awares are the multicluster components to (de)start per cluster.
+	awares []multicluster.Aware
 }
 
 // engagement tracks per-cluster lifecycle within the coordinator.
 //
 // ctx/cancel: engagement context; cancellation stops sources/workers.
-// started: whether runnables have been engaged for this cluster.
+// started: whether awares have been engaged for this cluster.
 // fence: the per-cluster Lease guard (nil until first start attempt).
 // nextTry: throttle timestamp for fence acquisition retries.
 type engagement struct {
@@ -128,7 +128,7 @@ type engagement struct {
 	ctx context.Context
 	// cancel cancels ctx.
 	cancel context.CancelFunc
-	// started is true after runnables have been engaged for this cluster.
+	// started is true after awares have been engaged for this cluster.
 	started bool
 
 	// fence is the per-cluster Lease guard (nil until first start attempt).
@@ -350,8 +350,8 @@ func (c *Coordinator) recompute(parent context.Context) {
 }
 
 func (c *Coordinator) startForCluster(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) {
-	for _, r := range c.runnables {
-		if err := r.Engage(ctx, name, cl); err != nil {
+	for _, a := range c.awares {
+		if err := a.Engage(ctx, name, cl); err != nil {
 			c.log.Error(err, "failed to engage", "cluster", name)
 			// best-effort: cancel + mark stopped so next tick can retry
 			c.mu.Lock()
@@ -365,7 +365,7 @@ func (c *Coordinator) startForCluster(ctx context.Context, name multicluster.Clu
 	}
 }
 
-// AddRunnable registers a multicluster-aware runnable.
-func (c *Coordinator) AddRunnable(r multicluster.Aware) {
-	c.runnables = append(c.runnables, r)
+// AddAware registers a multicluster-aware aware.
+func (c *Coordinator) AddAware(r multicluster.Aware) {
+	c.awares = append(c.awares, r)
 }

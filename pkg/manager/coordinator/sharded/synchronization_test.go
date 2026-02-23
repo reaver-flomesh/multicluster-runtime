@@ -77,7 +77,7 @@ func TestCoordinator_StartsWhenShouldOwnAndFenceAcquired(t *testing.T) {
 	)
 
 	sink := &stubRunnable{called: make(chan multicluster.ClusterName, 1)}
-	c.AddRunnable(sink)
+	c.AddAware(sink)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -128,7 +128,7 @@ func TestCoordinator_StopsAndReleasesWhenShouldOwnFalse(t *testing.T) {
 		WithSharder(sh),
 	)
 
-	c.AddRunnable(&stubRunnable{called: make(chan multicluster.ClusterName, 1)})
+	c.AddAware(&stubRunnable{called: make(chan multicluster.ClusterName, 1)})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

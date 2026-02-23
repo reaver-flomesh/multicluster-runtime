@@ -30,9 +30,9 @@ import (
 //
 // EXPERIMENTAL: Coordinator is not a stable API and may change without notice.
 type Coordinator interface {
-	// AddRunnable registers a multicluster-aware component to be engaged for
+	// AddAware registers a multicluster-aware component to be engaged for
 	// clusters this coordinator activates. Safe to call before any Engage.
-	AddRunnable(multicluster.Aware)
+	AddAware(multicluster.Aware)
 
 	// Engage informs the coordinator about a cluster that is now available.
 	// The coordinator may start or delay runnables for this cluster based on

@@ -28,8 +28,8 @@ import (
 
 // Coordinator engages all clusters immediately without sharding or fencing.
 type Coordinator struct {
-	mu        sync.Mutex
-	runnables []multicluster.Aware
+	mu     sync.Mutex
+	awares []multicluster.Aware
 }
 
 // New returns a basic coordinator that engages every cluster.
@@ -37,17 +37,17 @@ func New() *Coordinator {
 	return &Coordinator{}
 }
 
-// AddRunnable registers a multicluster-aware runnable.
-func (c *Coordinator) AddRunnable(r multicluster.Aware) {
+// AddAware registers a multicluster-aware runnable.
+func (c *Coordinator) AddAware(r multicluster.Aware) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.runnables = append(c.runnables, r)
+	c.awares = append(c.awares, r)
 }
 
 // Engage runs Engage on all registered runnables for this cluster.
 func (c *Coordinator) Engage(ctx context.Context, name multicluster.ClusterName, cl cluster.Cluster) error {
 	c.mu.Lock()
-	rs := append([]multicluster.Aware(nil), c.runnables...)
+	rs := append([]multicluster.Aware(nil), c.awares...)
 	c.mu.Unlock()
 	for _, r := range rs {
 		if err := r.Engage(ctx, name, cl); err != nil {
